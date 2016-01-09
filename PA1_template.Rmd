@@ -8,18 +8,88 @@ output:
 
 ## Loading and preprocessing the data
 
+Read in the zipped activity data included in the repository:
 
+```{r, echo=TRUE}
+data <- read.csv(unz("activity.zip", "activity.csv"))
+```
+
+The only data processing required is to 
+```{r, echo=TRUE}
+data$date <- as.Date(data$date)
+```
+
+The data is provided pre-processed and no further cleaning was applied.
 
 ## What is mean total number of steps taken per day?
 
+The total number of steps taken per day is calculated by summing over all time intervals in a given day, ignoring `NA`'s in this case.
 
+```{r, echo=TRUE}
+library(plyr)
+totsteps <- ddply(data, .(date), summarise, totSteps=sum(steps, na.rm = TRUE))
+hist(totsteps$totSteps)
+```
+
+The mean total number of steps taken per day: 
+```{r, echo=TRUE}
+mean(totsteps$totSteps)
+```
 
 ## What is the average daily activity pattern?
 
+Take mean of the number of steps in a given time interval across all days included in the data set. Here, `NA`'s are ignored.
 
+```{r, echo=TRUE}
+avgSteps <- ddply(data, .(interval), summarise, avgSteps=mean(steps, na.rm = TRUE))
+plot(avgSteps$interval, avgSteps$avgSteps, type="l")
+```
+
+The interval containing the maximum number of steps averaged across all days:
+``` {r, echo=TRUE}
+avgSteps$interval[which.max(avgSteps$avgSteps)]
+```
 
 ## Imputing missing values
 
+We investigate the possible bias in the above calculations introduced by the presence of missing values (`NA`).
 
+First, we find that there are
+```{r, echo=TRUE}
+sum(is.na(data$steps))
+```
+step entries with missing values. This represents
+```{r, echo=TRUE}
+sum(is.na(data$steps)) / length(data$steps) * 100.
+```
+percent of the entries present in the data set.
+
+To minimize this potential bias, `NA`'s are replaced with the average number of steps for the given interval.
+```{r, echo=TRUE}
+subNA <- merge(data, avgSteps)
+subNA[is.na(subNA$steps), 2] <- subNA$avgSteps[is.na(subNA$steps)]
+subNA <- subNA[,0:3]
+```
+
+Now recalculate the total number of steps per day
+```{r, echo=TRUE}
+totStepsNoNA <- ddply(subNA, .(date), summarise, totSteps=sum(steps, na.rm = TRUE))
+hist(totStepsNoNA$totSteps)
+```
+
+The mean total number of steps taken per day: 
+```{r, echo=TRUE}
+mean(totStepsNoNA$totSteps)
+```
+This represents a 
+```{r, echo=TRUE}
+(mean(totsteps$totSteps) - mean(totStepsNoNA$totSteps)) / mean(totsteps$totSteps) * 100.
+```
+precent change compared to simply ignoring `NA`'s
+
+The median total number of steps taken per day: 
+```{r, echo=TRUE}
+median(totStepsNoNA$totSteps)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
