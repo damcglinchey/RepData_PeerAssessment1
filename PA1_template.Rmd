@@ -27,8 +27,14 @@ The total number of steps taken per day is calculated by summing over all time i
 
 ```{r, echo=TRUE}
 library(plyr)
+library(ggplot2)
 totsteps <- ddply(data, .(date), summarise, totSteps=sum(steps, na.rm = TRUE))
-hist(totsteps$totSteps)
+ggplot(totsteps) +
+    geom_histogram(aes(x=totsteps$totSteps), 
+                   fill="steelblue",
+                   binwidth=1000) +
+    labs(x="Steps / day", y="count") +
+    theme_bw()
 ```
 
 The mean total number of steps taken per day: 
@@ -42,7 +48,12 @@ Take mean of the number of steps in a given time interval across all days includ
 
 ```{r, echo=TRUE}
 avgSteps <- ddply(data, .(interval), summarise, avgSteps=mean(steps, na.rm = TRUE))
-plot(avgSteps$interval, avgSteps$avgSteps, type="l")
+ggplot(avgSteps, aes(x=interval, y=avgSteps)) +
+    geom_line(colour="steelblue") +
+    labs(x="5 minute interval") +
+    labs(y="Mean number of steps") +
+    labs(title="Steps Taken Over the Course of a Day") +
+    theme_bw()
 ```
 
 The interval containing the maximum number of steps averaged across all days:
@@ -74,7 +85,12 @@ subNA <- subNA[,0:3]
 Now recalculate the total number of steps per day
 ```{r, echo=TRUE}
 totStepsNoNA <- ddply(subNA, .(date), summarise, totSteps=sum(steps, na.rm = TRUE))
-hist(totStepsNoNA$totSteps)
+##hist(totStepsNoNA$totSteps)
+ggplot(totStepsNoNA, aes(x=totSteps)) +
+    geom_histogram(fill="steelblue",
+                   binwidth=1000) +
+    labs(x="Steps / day", y="count") +
+    theme_bw()
 ```
 
 The mean total number of steps taken per day: 
@@ -93,3 +109,20 @@ median(totStepsNoNA$totSteps)
 ```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+```{r, echo=TRUE}
+##library(dplyr)
+wdata <- mutate(subNA, weeksplit=factor(grepl("S(un|at)", weekdays(as.Date(date), abbreviate=TRUE)), labels=c("weekday","weekend")))
+```
+
+
+```{r, echo=TRUE}
+wAvgSteps <- ddply(wdata, .(interval, weeksplit), summarise, avgSteps=mean(steps, na.rm = TRUE))
+ggplot(wAvgSteps, aes(x=interval, y=avgSteps)) +
+    geom_line(colour="steelblue") +
+    facet_grid(weeksplit ~ .) +
+    labs(x="5 minute interval") +
+    labs(y="Mean number of steps") +
+    labs(title="Steps Taken Over the Course of a Day") +
+    theme_bw()
+```
