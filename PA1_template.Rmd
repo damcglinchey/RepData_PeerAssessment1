@@ -5,29 +5,34 @@ output:
     keep_md: true
 ---
 
+This document analyses data on the number of steps taken across 5 minute intervals over a two month period by an annonymous user.
 
 ## Loading and preprocessing the data
 
-Read in the zipped activity data included in the repository:
-
+The data for this study is included in the repository as a zipped file. It can be read as follows,
 ```{r, echo=TRUE}
 data <- read.csv(unz("activity.zip", "activity.csv"))
 ```
 
-The only data processing required is to 
+The only data processing required is to transform the variables of the `date` column from factors to objects of class `Date`, which represent calendar dates.
+
 ```{r, echo=TRUE}
 data$date <- as.Date(data$date)
 ```
 
 The data is provided pre-processed and no further cleaning was applied.
 
-## What is mean total number of steps taken per day?
-
-The total number of steps taken per day is calculated by summing over all time intervals in a given day, ignoring `NA`'s in this case.
-
+The following R packages were used as part of this data analysis:
 ```{r, echo=TRUE}
 library(plyr)
 library(ggplot2)
+```
+
+## What is mean total number of steps taken per day?
+
+The total number of steps taken per day is calculated by summing over all time intervals in a given day, ignoring `NA`'s in this case. The figure below shows the distribution of the total number of steps taken per day.
+
+```{r, echo=TRUE}
 totsteps <- ddply(data, .(date), summarise, totSteps=sum(steps, na.rm = TRUE))
 ggplot(totsteps) +
     geom_histogram(aes(x=totsteps$totSteps), 
@@ -37,14 +42,14 @@ ggplot(totsteps) +
     theme_bw()
 ```
 
-The mean total number of steps taken per day: 
+The mean number of steps taken per day is 
 ```{r, echo=TRUE}
 mean(totsteps$totSteps)
 ```
 
 ## What is the average daily activity pattern?
 
-Take mean of the number of steps in a given time interval across all days included in the data set. Here, `NA`'s are ignored.
+The figure below plots the average number of steps taken across a given day. The mean number of steps in a given 5 minute time interval is calculated across all days included in the data set. Here, `NA`'s are ignored.
 
 ```{r, echo=TRUE}
 avgSteps <- ddply(data, .(interval), summarise, avgSteps=mean(steps, na.rm = TRUE))
@@ -56,33 +61,31 @@ ggplot(avgSteps, aes(x=interval, y=avgSteps)) +
     theme_bw()
 ```
 
-The interval containing the maximum number of steps averaged across all days:
+The interval containing the maximum number of steps averaged across all days is found to be
 ``` {r, echo=TRUE}
 avgSteps$interval[which.max(avgSteps$avgSteps)]
 ```
 
 ## Imputing missing values
 
-We investigate the possible bias in the above calculations introduced by the presence of missing values (`NA`).
-
-First, we find that there are
+The data set as provided includes a number of missing values, represented as `NA`. There are
 ```{r, echo=TRUE}
 sum(is.na(data$steps))
 ```
-step entries with missing values. This represents
+missing values included in the processed data set, representing
 ```{r, echo=TRUE}
 sum(is.na(data$steps)) / length(data$steps) * 100.
 ```
-percent of the entries present in the data set.
+percent of the entries present in the data set. The possible bias in the previous results introduced by the presence of missing values is investigated here.
 
-To minimize this potential bias, `NA`'s are replaced with the average number of steps for the given interval.
+To minimize this potential bias, `NA`'s are replaced with the average number of steps for the given 5 minute interval.
 ```{r, echo=TRUE}
 subNA <- merge(data, avgSteps)
 subNA[is.na(subNA$steps), 2] <- subNA$avgSteps[is.na(subNA$steps)]
 subNA <- subNA[,0:3]
 ```
 
-Now recalculate the total number of steps per day
+The total number of steps per day is then recalculated and the distribution is plotted below.
 ```{r, echo=TRUE}
 totStepsNoNA <- ddply(subNA, .(date), summarise, totSteps=sum(steps, na.rm = TRUE))
 ##hist(totStepsNoNA$totSteps)
@@ -93,7 +96,7 @@ ggplot(totStepsNoNA, aes(x=totSteps)) +
     theme_bw()
 ```
 
-The mean total number of steps taken per day: 
+The mean total number of steps taken per day after removing the bais from `NA`'s is
 ```{r, echo=TRUE}
 mean(totStepsNoNA$totSteps)
 ```
@@ -101,21 +104,24 @@ This represents a
 ```{r, echo=TRUE}
 (mean(totsteps$totSteps) - mean(totStepsNoNA$totSteps)) / mean(totsteps$totSteps) * 100.
 ```
-precent change compared to simply ignoring `NA`'s
+precent change compared to simply ignoring the `NA`'s, as shown above.
 
-The median total number of steps taken per day: 
+The median total number of steps taken per day is 
 ```{r, echo=TRUE}
 median(totStepsNoNA$totSteps)
 ```
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
+The above time series averages across all days in the week. Here we investigate the activity pattern between weekdays and weekends.
+
+An additonal column is added to the data set with `NA`'s removed containing a factor with two levels, `weekday` and `weekend`.
 ```{r, echo=TRUE}
 ##library(dplyr)
 wdata <- mutate(subNA, weeksplit=factor(grepl("S(un|at)", weekdays(as.Date(date), abbreviate=TRUE)), labels=c("weekday","weekend")))
 ```
 
-
+The mean number of steps over time is then plotted separately for weekdays and weekends. 
 ```{r, echo=TRUE}
 wAvgSteps <- ddply(wdata, .(interval, weeksplit), summarise, avgSteps=mean(steps, na.rm = TRUE))
 ggplot(wAvgSteps, aes(x=interval, y=avgSteps)) +
